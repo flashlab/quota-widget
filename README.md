@@ -132,7 +132,6 @@ fix: keep WorkManager Room constructors under R8 full mode
 ## 致谢
 
 - [DontKillMyApp](https://dontkillmyapp.com/) — 各厂商后台保活设置指南
-- [LINUX DO](https://linux.do/) — 社区讨论与反馈
 - DeepSeek、OpenCode 等平台提供的开放接口
 
 ---
