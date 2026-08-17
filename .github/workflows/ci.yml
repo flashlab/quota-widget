@@ -32,3 +32,12 @@ jobs:
 
       - name: Assemble debug APK
         run: ./gradlew :androidApp:assembleDebug
+
+      - name: Assemble release APK (debug-signed)
+        run: ./gradlew :androidApp:assembleRelease -PallowDebugReleaseSigning=true
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: quota-widget-apks
+          path: androidApp/build/outputs/apk/*/*.apk
