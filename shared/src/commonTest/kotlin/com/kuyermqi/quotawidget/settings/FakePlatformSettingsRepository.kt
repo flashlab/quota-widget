@@ -14,12 +14,14 @@ class FakePlatformSettingsRepository(
     openCode: OpenCodeGoSettings = OpenCodeGoSettings(),
     codex: CodexSettings = CodexSettings(),
     newApi: NewApiSettings = NewApiSettings(),
+    kimiCode: KimiCodeSettings = KimiCodeSettings(),
     widgetStates: Map<String, WidgetDisplayState> = emptyMap(),
 ) : PlatformSettingsRepository {
     private val deepSeekFlow = MutableStateFlow(deepSeek)
     private val openCodeFlow = MutableStateFlow(openCode)
     private val codexFlow = MutableStateFlow(codex)
     private val newApiFlow = MutableStateFlow(newApi)
+    private val kimiCodeFlow = MutableStateFlow(kimiCode)
     private val widgetFlows = mutableMapOf(
         PlatformIds.DEEPSEEK to MutableStateFlow(
             widgetStates[PlatformIds.DEEPSEEK] ?: WidgetDisplayState.NotConfigured,
@@ -32,6 +34,9 @@ class FakePlatformSettingsRepository(
         ),
         PlatformIds.NEW_API to MutableStateFlow(
             widgetStates[PlatformIds.NEW_API] ?: WidgetDisplayState.NotConfigured,
+        ),
+        PlatformIds.KIMI_CODE to MutableStateFlow(
+            widgetStates[PlatformIds.KIMI_CODE] ?: WidgetDisplayState.NotConfigured,
         ),
     )
     private val refreshPhases = mutableMapOf<String, RefreshIconPhase>()
@@ -106,6 +111,25 @@ class FakePlatformSettingsRepository(
             usageProgressStyle = current.usageProgressStyle,
         )
         widgetFlow(PlatformIds.NEW_API).value = WidgetDisplayState.NotConfigured
+    }
+
+    override fun observeKimiCodeSettings(): Flow<KimiCodeSettings> = kimiCodeFlow.asStateFlow()
+    override suspend fun getKimiCodeSettings(): KimiCodeSettings = kimiCodeFlow.value
+    override suspend fun saveKimiCodeSettings(settings: KimiCodeSettings) {
+        kimiCodeFlow.value = settings
+        if (!settings.isConfigured) {
+            widgetFlow(PlatformIds.KIMI_CODE).value = WidgetDisplayState.NotConfigured
+        }
+    }
+
+    override suspend fun clearKimiCodeSettings() {
+        val current = kimiCodeFlow.value
+        kimiCodeFlow.value = KimiCodeSettings(
+            widgetWindowKind = current.widgetWindowKind,
+            usageDisplayMode = current.usageDisplayMode,
+            usageProgressStyle = current.usageProgressStyle,
+        )
+        widgetFlow(PlatformIds.KIMI_CODE).value = WidgetDisplayState.NotConfigured
     }
 
     override fun observeWidgetState(platformId: String): Flow<WidgetDisplayState> =

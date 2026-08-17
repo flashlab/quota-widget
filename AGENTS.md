@@ -4,7 +4,7 @@
 
 ## 项目概览
 
-多平台 API 余额桌面小组件（Android）；当前支持 DeepSeek、OpenCode Go、Codex、NewAPI。
+多平台 API 余额桌面小组件（Android）；当前支持 DeepSeek、OpenCode Go、Codex、NewAPI、Kimi Code。
 
 
 | 项       | 值                                          |

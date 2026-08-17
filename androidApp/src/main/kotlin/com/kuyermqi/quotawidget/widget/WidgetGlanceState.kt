@@ -35,6 +35,7 @@ import com.kuyermqi.quotawidget.domain.formatBalance
 import com.kuyermqi.quotawidget.platform.PlatformIds
 import com.kuyermqi.quotawidget.platform.PlatformRegistry
 import com.kuyermqi.quotawidget.settings.CodexSettings
+import com.kuyermqi.quotawidget.settings.KimiCodeSettings
 import com.kuyermqi.quotawidget.settings.NewApiSettings
 import com.kuyermqi.quotawidget.settings.OpenCodeGoSettings
 import com.kuyermqi.quotawidget.settings.PlatformSettingsRepository
@@ -73,6 +74,10 @@ object WidgetGlanceState {
     val codexUsageProgressStyleKey = stringPreferencesKey("qw_codex_usage_progress_style")
     val newApiUsageDisplayModeKey = stringPreferencesKey("qw_new_api_usage_display")
     val newApiUsageProgressStyleKey = stringPreferencesKey("qw_new_api_usage_progress_style")
+    val kimiCodeWindowKindKey = stringPreferencesKey("qw_kimi_code_window_kind")
+    val kimiCodeUsageDisplayModeKey = stringPreferencesKey("qw_kimi_code_usage_display")
+    val kimiCodeUsageProgressStyleKey = stringPreferencesKey("qw_kimi_code_usage_progress_style")
+    val accountLabelKey = stringPreferencesKey("qw_account_label")
 
     private object Status {
         const val NOT_CONFIGURED = "not_configured"
@@ -116,6 +121,13 @@ object WidgetGlanceState {
             PlatformIds.NEW_API,
         ),
         Target(NewApiUsageWidget(), NewApiUsageWidget::class.java, PlatformIds.NEW_API),
+        Target(KimiCodeWidget(), KimiCodeWidget::class.java, PlatformIds.KIMI_CODE),
+        Target(KimiCodeCompactWidget(), KimiCodeCompactWidget::class.java, PlatformIds.KIMI_CODE),
+        Target(
+            KimiCodeOverviewWidget(),
+            KimiCodeOverviewWidget::class.java,
+            PlatformIds.KIMI_CODE,
+        ),
     )
 
     suspend fun syncAndUpdate(context: Context, reason: String) {
@@ -125,6 +137,7 @@ object WidgetGlanceState {
         val openCodeSettings = repo.getOpenCodeGoSettings()
         val codexSettings = repo.getCodexSettings()
         val newApiSettings = repo.getNewApiSettings()
+        val kimiCodeSettings = repo.getKimiCodeSettings()
         Log.i(TAG, "syncAndUpdate reason=$reason")
 
         val manager = GlanceAppWidgetManager(context)
@@ -148,6 +161,9 @@ object WidgetGlanceState {
                             },
                             newApiSettings = newApiSettings.takeIf {
                                 target.platformId == PlatformIds.NEW_API
+                            },
+                            kimiCodeSettings = kimiCodeSettings.takeIf {
+                                target.platformId == PlatformIds.KIMI_CODE
                             },
                         )
                     }
@@ -194,9 +210,22 @@ object WidgetGlanceState {
         } else {
             null
         }
+        val kimiCodeSettings = if (platformId == PlatformIds.KIMI_CODE) {
+            repo.getKimiCodeSettings()
+        } else {
+            null
+        }
         updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
             prefs.toMutablePreferences().apply {
-                write(phase, display, appSettings, openCodeSettings, codexSettings, newApiSettings)
+                write(
+                    phase,
+                    display,
+                    appSettings,
+                    openCodeSettings,
+                    codexSettings,
+                    newApiSettings,
+                    kimiCodeSettings,
+                )
             }
         }
         val verify = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
@@ -244,6 +273,17 @@ object WidgetGlanceState {
     fun Preferences.toNewApiUsageProgressStyle(): UsageProgressStyle =
         UsageProgressStyle.fromStorage(this[newApiUsageProgressStyleKey])
 
+    fun Preferences.toKimiCodeUsageWindowKind(): UsageWindowKind =
+        this[kimiCodeWindowKindKey]
+            ?.let { UsageWindowKind.fromStorage(it) }
+            ?: UsageWindowKind.WEEKLY
+
+    fun Preferences.toKimiCodeUsageDisplayMode(): UsageDisplayMode =
+        UsageDisplayMode.fromStorage(this[kimiCodeUsageDisplayModeKey])
+
+    fun Preferences.toKimiCodeUsageProgressStyle(): UsageProgressStyle =
+        UsageProgressStyle.fromStorage(this[kimiCodeUsageProgressStyleKey])
+
     fun Preferences.toDisplayState(): WidgetDisplayState {
         return when (this[statusKey]) {
             Status.LOADING -> WidgetDisplayState.Loading
@@ -280,6 +320,7 @@ object WidgetGlanceState {
                         emptyLimitedQuota = this[emptyLimitedQuotaKey] == true,
                         tokenExpired = this[tokenExpiredKey] == true,
                         quotaOverspent = this[quotaOverspentKey] == true,
+                        accountLabel = this[accountLabelKey].orEmpty(),
                     ),
                 )
             }
@@ -294,6 +335,7 @@ object WidgetGlanceState {
         openCodeSettings: OpenCodeGoSettings?,
         codexSettings: CodexSettings?,
         newApiSettings: NewApiSettings?,
+        kimiCodeSettings: KimiCodeSettings?,
     ) {
         this[refreshPhaseKey] = phase.name
         this[darkThemeModeKey] = appSettings.darkThemeMode.name
@@ -312,6 +354,11 @@ object WidgetGlanceState {
         if (newApiSettings != null) {
             this[newApiUsageDisplayModeKey] = newApiSettings.usageDisplayMode.name
             this[newApiUsageProgressStyleKey] = newApiSettings.usageProgressStyle.name
+        }
+        if (kimiCodeSettings != null) {
+            this[kimiCodeWindowKindKey] = kimiCodeSettings.widgetWindowKind.name
+            this[kimiCodeUsageDisplayModeKey] = kimiCodeSettings.usageDisplayMode.name
+            this[kimiCodeUsageProgressStyleKey] = kimiCodeSettings.usageProgressStyle.name
         }
         when (display) {
             WidgetDisplayState.NotConfigured -> {
@@ -343,6 +390,11 @@ object WidgetGlanceState {
                 this[emptyLimitedQuotaKey] = display.snapshot.emptyLimitedQuota
                 this[tokenExpiredKey] = display.snapshot.tokenExpired
                 this[quotaOverspentKey] = display.snapshot.quotaOverspent
+                if (display.snapshot.accountLabel.isBlank()) {
+                    remove(accountLabelKey)
+                } else {
+                    this[accountLabelKey] = display.snapshot.accountLabel
+                }
                 if (display.snapshot.usedDisplay.isBlank()) {
                     remove(usedDisplayKey)
                 } else {

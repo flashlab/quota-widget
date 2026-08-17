@@ -142,6 +142,8 @@ internal suspend fun maybeRefreshIfConfigured(
             app.settingsRepository.getCodexSettings().isConfigured
         PlatformIds.NEW_API ->
             app.settingsRepository.getNewApiSettings().isConfigured
+        PlatformIds.KIMI_CODE ->
+            app.settingsRepository.getKimiCodeSettings().isConfigured
         else -> false
     }
     if (!configured) return
@@ -167,6 +169,10 @@ internal fun enqueueBootstrapRefresh(context: Context) {
 @Composable
 internal fun contextString(@StringRes resId: Int): String =
     LocalWidgetAndroidContext.current.getString(resId)
+
+@Composable
+internal fun contextString(@StringRes resId: Int, vararg formatArgs: Any): String =
+    LocalWidgetAndroidContext.current.getString(resId, *formatArgs)
 
 internal fun balanceTitleFontSize(formattedBalance: String): TextUnit =
     when {

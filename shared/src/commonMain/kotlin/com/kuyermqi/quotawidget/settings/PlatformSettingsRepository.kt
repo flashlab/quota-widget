@@ -60,6 +60,16 @@ data class NewApiSettings(
 /** NewAPI common default: 500_000 quota = 1 USD. */
 const val DEFAULT_NEW_API_QUOTA_PER_USD = 500_000L
 
+data class KimiCodeSettings(
+    val apiKey: String = "",
+    val widgetWindowKind: UsageWindowKind = UsageWindowKind.WEEKLY,
+    val usageDisplayMode: UsageDisplayMode = UsageDisplayMode.USED,
+    val usageProgressStyle: UsageProgressStyle = UsageProgressStyle.BAR,
+) {
+    val isConfigured: Boolean
+        get() = apiKey.isNotBlank()
+}
+
 interface PlatformSettingsRepository {
     fun observeDeepSeekSettings(): Flow<DeepSeekSettings>
     suspend fun getDeepSeekSettings(): DeepSeekSettings
@@ -79,6 +89,11 @@ interface PlatformSettingsRepository {
     suspend fun getNewApiSettings(): NewApiSettings
     suspend fun saveNewApiSettings(settings: NewApiSettings)
     suspend fun clearNewApiSettings()
+
+    fun observeKimiCodeSettings(): Flow<KimiCodeSettings>
+    suspend fun getKimiCodeSettings(): KimiCodeSettings
+    suspend fun saveKimiCodeSettings(settings: KimiCodeSettings)
+    suspend fun clearKimiCodeSettings()
 
     fun observeWidgetState(platformId: String): Flow<WidgetDisplayState>
     suspend fun getWidgetState(platformId: String): WidgetDisplayState

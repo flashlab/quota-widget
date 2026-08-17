@@ -206,6 +206,8 @@ internal fun UsagePercentSuccessBlock(
                 expiredLabel = contextString(R.string.new_api_token_expired),
                 updatedAtText = updated,
             )
+        } else if (snapshot.accountLabel.isNotBlank()) {
+            "${snapshot.accountLabel} · $updated"
         } else {
             updated
         }

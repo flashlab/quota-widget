@@ -26,7 +26,7 @@
 
 ## 功能亮点
 
-- **多平台监控**：DeepSeek 账户余额、OpenCode Go 用量、Codex 订阅用量（每周 / 每月）、NewAPI 令牌余额与用量
+- **多平台监控**：DeepSeek 账户余额、OpenCode Go 用量、Codex 订阅用量（每周 / 每月）、NewAPI 令牌余额与用量、Kimi Code 套餐用量（5H / 每周）
 - **多种小组件尺寸**：标准、紧凑、用量总览，适配不同桌面布局
 - **后台自动刷新**：WorkManager 按设定间隔更新，支持手动点按刷新
 - **安全存储**：API Key / OAuth Token 经 Tink 加密后写入 DataStore
@@ -43,6 +43,7 @@
 | **OpenCode Go** | 滚动 / 每周 / 每月用量或余量（可配置） | 标准 · 紧凑 · 总览 |
 | **Codex** | 每周 / 每月用量或余量（可配置；应用内 OAuth 登录） | 标准 · 紧凑 · 总览 |
 | **NewAPI** | 令牌余额（USD）与用量/余量百分比（可配置 Base URL + API Key） | 余额标准 · 余额紧凑 · 用量 |
+| **Kimi Code** | 5H / 每周用量或余量（Coding Plan 的 sk-kimi- API Key） | 标准 · 紧凑 · 总览 |
 
 ## 下载
 

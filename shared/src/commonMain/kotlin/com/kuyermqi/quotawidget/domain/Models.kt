@@ -227,6 +227,8 @@ data class QuotaSnapshot(
     val tokenExpired: Boolean = false,
     /** NewAPI: [total_available] is negative (overspend). */
     val quotaOverspent: Boolean = false,
+    /** Optional account / plan label shown as small text (Kimi Code membership level). */
+    val accountLabel: String = "",
 )
 
 sealed interface WidgetDisplayState {

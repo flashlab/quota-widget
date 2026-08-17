@@ -11,9 +11,11 @@ class PlatformRegistryTest {
         assertNotNull(PlatformRegistry.find(PlatformIds.OPENCODE_GO))
         assertNotNull(PlatformRegistry.find(PlatformIds.CODEX))
         assertNotNull(PlatformRegistry.find(PlatformIds.NEW_API))
+        assertNotNull(PlatformRegistry.find(PlatformIds.KIMI_CODE))
         assertEquals("DeepSeek", PlatformRegistry.displayName(PlatformIds.DEEPSEEK))
         assertEquals("OpenCode Go", PlatformRegistry.displayName(PlatformIds.OPENCODE_GO))
         assertEquals("Codex", PlatformRegistry.displayName(PlatformIds.CODEX))
         assertEquals("NewAPI", PlatformRegistry.displayName(PlatformIds.NEW_API))
+        assertEquals("Kimi Code", PlatformRegistry.displayName(PlatformIds.KIMI_CODE))
     }
 }

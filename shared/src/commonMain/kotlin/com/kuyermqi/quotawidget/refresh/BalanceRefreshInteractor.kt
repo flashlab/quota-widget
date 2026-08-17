@@ -32,6 +32,9 @@ class BalanceRefreshInteractor(
         if (settingsRepository.getNewApiSettings().isConfigured) {
             results += refresh(PlatformIds.NEW_API)
         }
+        if (settingsRepository.getKimiCodeSettings().isConfigured) {
+            results += refresh(PlatformIds.KIMI_CODE)
+        }
         return results
     }
 

@@ -223,6 +223,42 @@ class AndroidPlatformSettingsRepository(
         )
     }
 
+    override fun observeKimiCodeSettings(): Flow<KimiCodeSettings> =
+        dataStore.data.map { prefs -> prefs.toKimiCodeSettings() }
+
+    override suspend fun getKimiCodeSettings(): KimiCodeSettings =
+        dataStore.data.first().toKimiCodeSettings()
+
+    override suspend fun saveKimiCodeSettings(settings: KimiCodeSettings) {
+        dataStore.edit { prefs ->
+            if (!settings.isConfigured) {
+                prefs.remove(Keys.KIMI_CODE_API_KEY_ENC)
+                prefs.clearWidgetPayload(PlatformIds.KIMI_CODE)
+                prefs[widgetStatusKey(PlatformIds.KIMI_CODE)] = Status.NOT_CONFIGURED
+            } else {
+                prefs[Keys.KIMI_CODE_API_KEY_ENC] = encrypt(settings.apiKey, KIMI_CODE_API_KEY_AD)
+                val status = prefs[widgetStatusKey(PlatformIds.KIMI_CODE)]
+                if (status == null || status == Status.NOT_CONFIGURED) {
+                    prefs[widgetStatusKey(PlatformIds.KIMI_CODE)] = Status.LOADING
+                }
+            }
+            prefs[Keys.KIMI_CODE_WIDGET_WINDOW] = settings.widgetWindowKind.name
+            prefs[Keys.KIMI_CODE_USAGE_DISPLAY] = settings.usageDisplayMode.name
+            prefs[Keys.KIMI_CODE_USAGE_PROGRESS_STYLE] = settings.usageProgressStyle.name
+        }
+    }
+
+    override suspend fun clearKimiCodeSettings() {
+        val current = getKimiCodeSettings()
+        saveKimiCodeSettings(
+            KimiCodeSettings(
+                widgetWindowKind = current.widgetWindowKind,
+                usageDisplayMode = current.usageDisplayMode,
+                usageProgressStyle = current.usageProgressStyle,
+            ),
+        )
+    }
+
     override fun observeWidgetState(platformId: String): Flow<WidgetDisplayState> =
         dataStore.data.map { prefs -> prefs.toWidgetState(platformId) }
 
@@ -250,6 +286,11 @@ class AndroidPlatformSettingsRepository(
             prefs[widgetEmptyLimitedQuotaKey(platformId)] = snapshot.emptyLimitedQuota
             prefs[widgetTokenExpiredKey(platformId)] = snapshot.tokenExpired
             prefs[widgetQuotaOverspentKey(platformId)] = snapshot.quotaOverspent
+            if (snapshot.accountLabel.isBlank()) {
+                prefs.remove(widgetAccountLabelKey(platformId))
+            } else {
+                prefs[widgetAccountLabelKey(platformId)] = snapshot.accountLabel
+            }
             if (snapshot.usedDisplay.isBlank()) {
                 prefs.remove(widgetUsedDisplayKey(platformId))
             } else {
@@ -326,6 +367,7 @@ class AndroidPlatformSettingsRepository(
                 PlatformIds.OPENCODE_GO,
                 PlatformIds.CODEX,
                 PlatformIds.NEW_API,
+                PlatformIds.KIMI_CODE,
             )) {
                 prefs[refreshPhaseKey(platformId)] = RefreshIconPhase.Idle.name
             }
@@ -458,12 +500,30 @@ class AndroidPlatformSettingsRepository(
         )
     }
 
+    private fun Preferences.toKimiCodeSettings(): KimiCodeSettings {
+        val encrypted = this[Keys.KIMI_CODE_API_KEY_ENC]
+        val apiKey = encrypted
+            ?.let { runCatching { decrypt(it, KIMI_CODE_API_KEY_AD) }.getOrDefault("") }
+            .orEmpty()
+        return KimiCodeSettings(
+            apiKey = apiKey,
+            widgetWindowKind = this[Keys.KIMI_CODE_WIDGET_WINDOW]
+                ?.let { UsageWindowKind.fromStorage(it) }
+                ?: UsageWindowKind.WEEKLY,
+            usageDisplayMode = UsageDisplayMode.fromStorage(this[Keys.KIMI_CODE_USAGE_DISPLAY]),
+            usageProgressStyle = UsageProgressStyle.fromStorage(
+                this[Keys.KIMI_CODE_USAGE_PROGRESS_STYLE],
+            ),
+        )
+    }
+
     private fun Preferences.isConfigured(platformId: String): Boolean =
         when (platformId) {
             PlatformIds.DEEPSEEK -> toDeepSeekSettings().apiKey.isNotBlank()
             PlatformIds.OPENCODE_GO -> toOpenCodeGoSettings().isConfigured
             PlatformIds.CODEX -> toCodexSettings().isConfigured
             PlatformIds.NEW_API -> toNewApiSettings().isConfigured
+            PlatformIds.KIMI_CODE -> toKimiCodeSettings().isConfigured
             else -> false
         }
 
@@ -519,6 +579,7 @@ class AndroidPlatformSettingsRepository(
                         emptyLimitedQuota = this[widgetEmptyLimitedQuotaKey(platformId)] == true,
                         tokenExpired = this[widgetTokenExpiredKey(platformId)] == true,
                         quotaOverspent = this[widgetQuotaOverspentKey(platformId)] == true,
+                        accountLabel = this[widgetAccountLabelKey(platformId)].orEmpty(),
                     ),
                 )
             }
@@ -577,6 +638,7 @@ class AndroidPlatformSettingsRepository(
         remove(widgetEmptyLimitedQuotaKey(platformId))
         remove(widgetTokenExpiredKey(platformId))
         remove(widgetQuotaOverspentKey(platformId))
+        remove(widgetAccountLabelKey(platformId))
     }
 
     private fun encrypt(plain: String, associatedData: ByteArray): String {
@@ -614,6 +676,10 @@ class AndroidPlatformSettingsRepository(
         val NEW_API_QUOTA_PER_USD = longPreferencesKey("new_api_quota_per_usd")
         val NEW_API_USAGE_DISPLAY = stringPreferencesKey("new_api_usage_display")
         val NEW_API_USAGE_PROGRESS_STYLE = stringPreferencesKey("new_api_usage_progress_style")
+        val KIMI_CODE_API_KEY_ENC = stringPreferencesKey("kimi_code_api_key_enc")
+        val KIMI_CODE_WIDGET_WINDOW = stringPreferencesKey("kimi_code_widget_window")
+        val KIMI_CODE_USAGE_DISPLAY = stringPreferencesKey("kimi_code_usage_display")
+        val KIMI_CODE_USAGE_PROGRESS_STYLE = stringPreferencesKey("kimi_code_usage_progress_style")
         val ACTIVE_PLATFORM_ID = stringPreferencesKey("active_platform_id")
         val LEGACY_WIDGET_STATUS = stringPreferencesKey("widget_status")
         val LEGACY_WIDGET_ERROR = stringPreferencesKey("widget_error")
@@ -651,6 +717,7 @@ class AndroidPlatformSettingsRepository(
         private val CODEX_REFRESH_AD = "codex_refresh_token".encodeToByteArray()
         private val CODEX_ID_AD = "codex_id_token".encodeToByteArray()
         private val NEW_API_KEY_AD = "new_api_key".encodeToByteArray()
+        private val KIMI_CODE_API_KEY_AD = "kimi_code_api_key".encodeToByteArray()
 
         private fun widgetStatusKey(platformId: String) =
             stringPreferencesKey("widget_${platformId}_status")
@@ -693,6 +760,9 @@ class AndroidPlatformSettingsRepository(
 
         private fun widgetQuotaOverspentKey(platformId: String) =
             booleanPreferencesKey("widget_${platformId}_quota_overspent")
+
+        private fun widgetAccountLabelKey(platformId: String) =
+            stringPreferencesKey("widget_${platformId}_account_label")
 
         private fun refreshPhaseKey(platformId: String) =
             stringPreferencesKey("refresh_${platformId}_icon_phase")
