@@ -26,7 +26,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Shared unit tests
-        run: ./gradlew :shared:testDebugUnitTest
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :shared:testDebugUnitTest
 
       - name: Assemble debug APK
         run: ./gradlew :androidApp:assembleDebug
