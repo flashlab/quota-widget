@@ -39,6 +39,8 @@ fun UsagePercentCompactContent(
     windowKind: UsageWindowKind,
     usageDisplayMode: UsageDisplayMode,
     usageProgressStyle: UsageProgressStyle,
+    /** Kimi Code: footer becomes `3h14m · 4m` (live reset countdown · refresh elapsed). */
+    countdownFooter: Boolean = false,
 ) {
     Box(
         modifier = GlanceModifier
@@ -74,6 +76,7 @@ fun UsagePercentCompactContent(
                             openApp = openApp,
                             showProgress = false,
                             compact = true,
+                            countdownFooter = countdownFooter,
                         )
                     }
                 }

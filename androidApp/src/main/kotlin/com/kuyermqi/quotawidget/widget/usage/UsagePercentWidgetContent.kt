@@ -27,9 +27,13 @@ import com.kuyermqi.quotawidget.domain.UsageDisplayMode
 import com.kuyermqi.quotawidget.domain.UsageProgressStyle
 import com.kuyermqi.quotawidget.domain.UsageWindowKind
 import com.kuyermqi.quotawidget.domain.WidgetDisplayState
+import com.kuyermqi.quotawidget.domain.formatElapsedDurationCompact
 import com.kuyermqi.quotawidget.domain.formatNewApiUsageWidgetTitle
 import com.kuyermqi.quotawidget.domain.formatNewApiWidgetFooter
+import com.kuyermqi.quotawidget.domain.formatRemainingDurationCompact
 import com.kuyermqi.quotawidget.domain.formatUsageDisplayPercent
+import com.kuyermqi.quotawidget.domain.liveElapsedSec
+import com.kuyermqi.quotawidget.domain.liveResetInSec
 import com.kuyermqi.quotawidget.domain.newApiUsageProgressDisplayMode
 import com.kuyermqi.quotawidget.domain.newApiUsageProgressUsedPercent
 import com.kuyermqi.quotawidget.domain.newApiUsageWidgetShowsProgress
@@ -54,6 +58,8 @@ fun UsagePercentWidgetContent(
     windowKind: UsageWindowKind,
     usageDisplayMode: UsageDisplayMode,
     usageProgressStyle: UsageProgressStyle,
+    /** Kimi Code: footer becomes `3h14m · 4m` (live reset countdown · refresh elapsed). */
+    countdownFooter: Boolean = false,
 ) {
     Box(
         modifier = GlanceModifier
@@ -110,6 +116,7 @@ fun UsagePercentWidgetContent(
                         usageProgressStyle = usageProgressStyle,
                         openApp = openApp,
                         showProgress = true,
+                        countdownFooter = countdownFooter,
                     )
                 is WidgetDisplayState.Error ->
                     BalanceBlock(
@@ -132,6 +139,7 @@ internal fun UsagePercentSuccessBlock(
     openApp: Action,
     showProgress: Boolean,
     compact: Boolean = false,
+    countdownFooter: Boolean = false,
 ) {
     val effectiveWindowKind = if (snapshot.platformId == PlatformIds.CODEX) {
         resolveCodexUsageSummaryWindowKind(snapshot.windows, windowKind) ?: windowKind
@@ -206,8 +214,19 @@ internal fun UsagePercentSuccessBlock(
                 expiredLabel = contextString(R.string.new_api_token_expired),
                 updatedAtText = updated,
             )
-        } else if (snapshot.accountLabel.isNotBlank()) {
-            "${snapshot.accountLabel} · $updated"
+        } else if (countdownFooter) {
+            val nowMs = System.currentTimeMillis()
+            val window = snapshot.windows
+                .find { it.kind == effectiveWindowKind.toQuotaWindowKind() }
+            val reset = liveResetInSec(window?.resetInSec, snapshot.updatedAtEpochMs, nowMs)
+            val elapsed = formatElapsedDurationCompact(
+                liveElapsedSec(snapshot.updatedAtEpochMs, nowMs),
+            )
+            if (reset != null) {
+                "${formatRemainingDurationCompact(reset)} · $elapsed"
+            } else {
+                elapsed
+            }
         } else {
             updated
         }

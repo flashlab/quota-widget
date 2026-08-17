@@ -34,7 +34,11 @@ import com.kuyermqi.quotawidget.domain.RefreshIconPhase
 import com.kuyermqi.quotawidget.domain.UsageDisplayMode
 import com.kuyermqi.quotawidget.domain.UsageProgressStyle
 import com.kuyermqi.quotawidget.domain.WidgetDisplayState
+import com.kuyermqi.quotawidget.domain.formatElapsedDurationCompact
+import com.kuyermqi.quotawidget.domain.formatRemainingDurationCompact
 import com.kuyermqi.quotawidget.domain.formatUsageDisplayPercent
+import com.kuyermqi.quotawidget.domain.liveElapsedSec
+import com.kuyermqi.quotawidget.domain.liveResetInSec
 import com.kuyermqi.quotawidget.domain.usage.usageWindowLabelRes
 import com.kuyermqi.quotawidget.widget.BalanceBlock
 import com.kuyermqi.quotawidget.widget.WidgetDateFormatter
@@ -98,7 +102,10 @@ fun UsageOverviewWidgetContent(
     usageDisplayMode: UsageDisplayMode,
     usageProgressStyle: UsageProgressStyle,
     overviewKinds: List<QuotaWindowKind>,
-    showResetLabels: Boolean = false,
+    /** Kimi Code: left row label becomes `5H · 3h14m` (live reset countdown). */
+    rowCountdownLabels: Boolean = false,
+    /** Kimi Code: footer becomes `ET · 4m` (time since last refresh). */
+    elapsedFooter: Boolean = false,
 ) {
     val density = if (LocalSize.current.height >= UsageOverviewSizeComfortable.height) {
         ComfortableDensity
@@ -175,7 +182,8 @@ fun UsageOverviewWidgetContent(
                         usageDisplayMode = usageDisplayMode,
                         usageProgressStyle = usageProgressStyle,
                         overviewKinds = overviewKinds,
-                        showResetLabels = showResetLabels,
+                        rowCountdownLabels = rowCountdownLabels,
+                        elapsedFooter = elapsedFooter,
                     )
                 }
             }
@@ -191,11 +199,13 @@ private fun UsageOverviewSuccessBlock(
     usageDisplayMode: UsageDisplayMode,
     usageProgressStyle: UsageProgressStyle,
     overviewKinds: List<QuotaWindowKind>,
-    showResetLabels: Boolean,
+    rowCountdownLabels: Boolean,
+    elapsedFooter: Boolean,
 ) {
     val kinds = overviewKinds.ifEmpty {
         listOf(QuotaWindowKind.WEEKLY, QuotaWindowKind.MONTHLY)
     }
+    val nowMs = System.currentTimeMillis()
     Column(
         modifier = GlanceModifier
             .fillMaxWidth()
@@ -203,23 +213,31 @@ private fun UsageOverviewSuccessBlock(
     ) {
         kinds.forEachIndexed { index, kind ->
             if (index > 0) Spacer(GlanceModifier.height(density.rowGap))
+            val window = snapshot.windows.find { it.kind == kind }
             OverviewUsageRow(
-                label = contextString(usageWindowLabelRes(kind, usageDisplayMode)),
-                window = snapshot.windows.find { it.kind == kind },
+                label = overviewRowLabel(
+                    kind = kind,
+                    window = window,
+                    snapshot = snapshot,
+                    nowMs = nowMs,
+                    rowCountdownLabels = rowCountdownLabels,
+                    usageDisplayMode = usageDisplayMode,
+                ),
+                window = window,
                 openApp = openApp,
                 density = density,
                 usageDisplayMode = usageDisplayMode,
                 usageProgressStyle = usageProgressStyle,
-                showResetLabel = showResetLabels,
             )
         }
         Spacer(GlanceModifier.height(density.updatedGap))
-        val updated = "更新于 ${WidgetDateFormatter.formatUpdatedAt(snapshot.updatedAtEpochMs)}"
         Text(
-            text = if (snapshot.accountLabel.isBlank()) {
-                updated
+            text = if (elapsedFooter) {
+                "ET · " + formatElapsedDurationCompact(
+                    liveElapsedSec(snapshot.updatedAtEpochMs, nowMs),
+                )
             } else {
-                "${snapshot.accountLabel} · $updated"
+                "更新于 ${WidgetDateFormatter.formatUpdatedAt(snapshot.updatedAtEpochMs)}"
             },
             style = TextStyle(
                 color = GlanceTheme.colors.onSurfaceVariant,
@@ -232,6 +250,33 @@ private fun UsageOverviewSuccessBlock(
 }
 
 @Composable
+private fun overviewRowLabel(
+    kind: QuotaWindowKind,
+    window: QuotaWindow?,
+    snapshot: QuotaSnapshot,
+    nowMs: Long,
+    rowCountdownLabels: Boolean,
+    usageDisplayMode: UsageDisplayMode,
+): String {
+    if (rowCountdownLabels) {
+        val short = when (kind) {
+            QuotaWindowKind.FIVE_HOUR -> "5H"
+            QuotaWindowKind.WEEKLY -> "7D"
+            else -> null
+        }
+        if (short != null) {
+            val reset = liveResetInSec(window?.resetInSec, snapshot.updatedAtEpochMs, nowMs)
+            return if (reset != null) {
+                "$short · ${formatRemainingDurationCompact(reset)}"
+            } else {
+                short
+            }
+        }
+    }
+    return contextString(usageWindowLabelRes(kind, usageDisplayMode))
+}
+
+@Composable
 private fun OverviewUsageRow(
     label: String,
     window: QuotaWindow?,
@@ -239,79 +284,62 @@ private fun OverviewUsageRow(
     density: OverviewDensity,
     usageDisplayMode: UsageDisplayMode,
     usageProgressStyle: UsageProgressStyle,
-    showResetLabel: Boolean,
 ) {
     val used = window?.usedPercent
     val percentText = used?.let { formatUsageDisplayPercent(it, usageDisplayMode) }
         ?: contextString(R.string.usage_unavailable)
-    // Compact density has no vertical room for the extra line.
-    val showReset = showResetLabel && density == ComfortableDensity
-    Column(modifier = GlanceModifier.fillMaxWidth()) {
-        when (usageProgressStyle) {
-            UsageProgressStyle.CAPSULE -> {
-                UsageCapsuleProgressBar(
-                    label = label,
-                    percentText = percentText,
-                    usedPercent = used,
-                    usageDisplayMode = usageDisplayMode,
-                    height = density.capsuleHeight,
-                    labelSize = density.labelSize,
-                    percentSize = density.labelSize,
-                )
-            }
-            UsageProgressStyle.BAR -> {
-                Column(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .clickableNoRipple(openApp),
+    when (usageProgressStyle) {
+        UsageProgressStyle.CAPSULE -> {
+            UsageCapsuleProgressBar(
+                label = label,
+                percentText = percentText,
+                usedPercent = used,
+                usageDisplayMode = usageDisplayMode,
+                height = density.capsuleHeight,
+                labelSize = density.labelSize,
+                percentSize = density.labelSize,
+            )
+        }
+        UsageProgressStyle.BAR -> {
+            Column(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .clickableNoRipple(openApp),
+            ) {
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = label,
-                            style = TextStyle(
-                                color = GlanceTheme.colors.onSurface,
-                                fontSize = density.labelSize,
-                                fontWeight = FontWeight.Medium,
-                            ),
-                            maxLines = 1,
-                            modifier = GlanceModifier.defaultWeight(),
-                        )
-                        Text(
-                            text = percentText,
-                            style = TextStyle(
-                                color = GlanceTheme.colors.onSurface,
-                                fontSize = density.labelSize,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            maxLines = 1,
-                        )
-                    }
-                    Spacer(GlanceModifier.height(density.labelBarGap))
-                    if (used != null) {
-                        UsageProgressBar(
-                            usedPercent = used,
-                            usageDisplayMode = usageDisplayMode,
-                        )
-                    } else {
-                        UsageBarProgressIndicator(fillFraction = 0f, nearLimit = false)
-                    }
+                    Text(
+                        text = label,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = density.labelSize,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                        modifier = GlanceModifier.defaultWeight(),
+                    )
+                    Text(
+                        text = percentText,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = density.labelSize,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        maxLines = 1,
+                    )
+                }
+                Spacer(GlanceModifier.height(density.labelBarGap))
+                if (used != null) {
+                    UsageProgressBar(
+                        usedPercent = used,
+                        usageDisplayMode = usageDisplayMode,
+                    )
+                } else {
+                    UsageBarProgressIndicator(fillFraction = 0f, nearLimit = false)
                 }
             }
-        }
-        if (showReset) {
-            Spacer(GlanceModifier.height(2.dp))
-            Text(
-                text = usageResetLabel(window?.resetInSec),
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = density.updatedSize,
-                ),
-                maxLines = 1,
-                modifier = GlanceModifier.clickableNoRipple(openApp),
-            )
         }
     }
 }

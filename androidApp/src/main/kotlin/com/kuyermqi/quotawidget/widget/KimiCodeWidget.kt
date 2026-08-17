@@ -32,6 +32,7 @@ class KimiCodeWidget : GlanceAppWidget() {
                 windowKind = prefs.toKimiCodeUsageWindowKind(),
                 usageDisplayMode = prefs.toKimiCodeUsageDisplayMode(),
                 usageProgressStyle = prefs.toKimiCodeUsageProgressStyle(),
+                countdownFooter = true,
             )
         }
     }
@@ -52,6 +53,7 @@ class KimiCodeCompactWidget : GlanceAppWidget() {
                 windowKind = prefs.toKimiCodeUsageWindowKind(),
                 usageDisplayMode = prefs.toKimiCodeUsageDisplayMode(),
                 usageProgressStyle = prefs.toKimiCodeUsageProgressStyle(),
+                countdownFooter = true,
             )
         }
     }
