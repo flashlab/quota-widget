@@ -34,10 +34,8 @@ import com.kuyermqi.quotawidget.domain.RefreshIconPhase
 import com.kuyermqi.quotawidget.domain.UsageDisplayMode
 import com.kuyermqi.quotawidget.domain.UsageProgressStyle
 import com.kuyermqi.quotawidget.domain.WidgetDisplayState
-import com.kuyermqi.quotawidget.domain.formatElapsedDurationCompact
 import com.kuyermqi.quotawidget.domain.formatRemainingDurationCompact
 import com.kuyermqi.quotawidget.domain.formatUsageDisplayPercent
-import com.kuyermqi.quotawidget.domain.liveElapsedSec
 import com.kuyermqi.quotawidget.domain.liveResetInSec
 import com.kuyermqi.quotawidget.domain.usage.usageWindowLabelRes
 import com.kuyermqi.quotawidget.widget.BalanceBlock
@@ -104,8 +102,8 @@ fun UsageOverviewWidgetContent(
     overviewKinds: List<QuotaWindowKind>,
     /** Kimi Code: left row label becomes `5H · 3h14m` (live reset countdown). */
     rowCountdownLabels: Boolean = false,
-    /** Kimi Code: footer becomes `ET · 4m` (time since last refresh). */
-    elapsedFooter: Boolean = false,
+    /** Kimi Code: footer becomes `🕒 13:04` (wall-clock time of last refresh). */
+    refreshClockFooter: Boolean = false,
 ) {
     val density = if (LocalSize.current.height >= UsageOverviewSizeComfortable.height) {
         ComfortableDensity
@@ -183,7 +181,7 @@ fun UsageOverviewWidgetContent(
                         usageProgressStyle = usageProgressStyle,
                         overviewKinds = overviewKinds,
                         rowCountdownLabels = rowCountdownLabels,
-                        elapsedFooter = elapsedFooter,
+                        refreshClockFooter = refreshClockFooter,
                     )
                 }
             }
@@ -200,7 +198,7 @@ private fun UsageOverviewSuccessBlock(
     usageProgressStyle: UsageProgressStyle,
     overviewKinds: List<QuotaWindowKind>,
     rowCountdownLabels: Boolean,
-    elapsedFooter: Boolean,
+    refreshClockFooter: Boolean,
 ) {
     val kinds = overviewKinds.ifEmpty {
         listOf(QuotaWindowKind.WEEKLY, QuotaWindowKind.MONTHLY)
@@ -232,10 +230,8 @@ private fun UsageOverviewSuccessBlock(
         }
         Spacer(GlanceModifier.height(density.updatedGap))
         Text(
-            text = if (elapsedFooter) {
-                "ET · " + formatElapsedDurationCompact(
-                    liveElapsedSec(snapshot.updatedAtEpochMs, nowMs),
-                )
+            text = if (refreshClockFooter) {
+                "🕒 ${WidgetDateFormatter.formatClockTime(snapshot.updatedAtEpochMs)}"
             } else {
                 "更新于 ${WidgetDateFormatter.formatUpdatedAt(snapshot.updatedAtEpochMs)}"
             },

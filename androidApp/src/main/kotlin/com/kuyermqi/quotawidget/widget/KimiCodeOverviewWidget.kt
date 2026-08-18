@@ -38,7 +38,7 @@ class KimiCodeOverviewWidget : GlanceAppWidget() {
                 usageProgressStyle = prefs.toKimiCodeUsageProgressStyle(),
                 overviewKinds = OVERVIEW_KINDS,
                 rowCountdownLabels = true,
-                elapsedFooter = true,
+                refreshClockFooter = true,
             )
         }
     }

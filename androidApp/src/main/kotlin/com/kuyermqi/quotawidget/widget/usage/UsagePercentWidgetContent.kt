@@ -27,12 +27,10 @@ import com.kuyermqi.quotawidget.domain.UsageDisplayMode
 import com.kuyermqi.quotawidget.domain.UsageProgressStyle
 import com.kuyermqi.quotawidget.domain.UsageWindowKind
 import com.kuyermqi.quotawidget.domain.WidgetDisplayState
-import com.kuyermqi.quotawidget.domain.formatElapsedDurationCompact
 import com.kuyermqi.quotawidget.domain.formatNewApiUsageWidgetTitle
 import com.kuyermqi.quotawidget.domain.formatNewApiWidgetFooter
 import com.kuyermqi.quotawidget.domain.formatRemainingDurationCompact
 import com.kuyermqi.quotawidget.domain.formatUsageDisplayPercent
-import com.kuyermqi.quotawidget.domain.liveElapsedSec
 import com.kuyermqi.quotawidget.domain.liveResetInSec
 import com.kuyermqi.quotawidget.domain.newApiUsageProgressDisplayMode
 import com.kuyermqi.quotawidget.domain.newApiUsageProgressUsedPercent
@@ -58,7 +56,7 @@ fun UsagePercentWidgetContent(
     windowKind: UsageWindowKind,
     usageDisplayMode: UsageDisplayMode,
     usageProgressStyle: UsageProgressStyle,
-    /** Kimi Code: footer becomes `3h14m · 4m` (live reset countdown · refresh elapsed). */
+    /** Kimi Code: footer becomes `2d10h · 13:04` (reset countdown · refresh clock time). */
     countdownFooter: Boolean = false,
 ) {
     Box(
@@ -219,13 +217,11 @@ internal fun UsagePercentSuccessBlock(
             val window = snapshot.windows
                 .find { it.kind == effectiveWindowKind.toQuotaWindowKind() }
             val reset = liveResetInSec(window?.resetInSec, snapshot.updatedAtEpochMs, nowMs)
-            val elapsed = formatElapsedDurationCompact(
-                liveElapsedSec(snapshot.updatedAtEpochMs, nowMs),
-            )
+            val clock = WidgetDateFormatter.formatClockTime(snapshot.updatedAtEpochMs)
             if (reset != null) {
-                "${formatRemainingDurationCompact(reset)} · $elapsed"
+                "${formatRemainingDurationCompact(reset)} · $clock"
             } else {
-                elapsed
+                clock
             }
         } else {
             updated

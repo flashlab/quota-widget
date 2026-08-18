@@ -39,7 +39,7 @@ fun UsagePercentCompactContent(
     windowKind: UsageWindowKind,
     usageDisplayMode: UsageDisplayMode,
     usageProgressStyle: UsageProgressStyle,
-    /** Kimi Code: footer becomes `3h14m · 4m` (live reset countdown · refresh elapsed). */
+    /** Kimi Code: footer becomes `2d10h · 13:04` (reset countdown · refresh clock time). */
     countdownFooter: Boolean = false,
 ) {
     Box(
